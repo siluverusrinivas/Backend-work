@@ -6,7 +6,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password, make_password
 from .models import User
 
 
@@ -55,9 +55,46 @@ class RegisterUserView(APIView):
             status=status.HTTP_201_CREATED
         )
 
+class LoginUserView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        if not isinstance(email, str) or not isinstance(password, str) or not email or not password:
+            return Response(
+                {"message": "email and password are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"message": "Invalid email or password"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if not check_password(password, user.password):
+            return Response(
+                {"message": "Invalid email or password"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        return Response(
+            {
+                "message": "Login successful",
+                "user": {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                },
+            },
+            status=status.HTTP_200_OK
+        )
+
 class ListUserView(APIView):
     def get(self,request):
-        users=User.objects.all().order_by('_created_at')
+        users=User.objects.all().order_by('-created_at')
 
         user_list=[]
 
